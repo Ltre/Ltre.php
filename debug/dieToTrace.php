@@ -1,5 +1,5 @@
 <?php
-function dieToTrace($errMsg) {
+function dieToTrace($errMsg = '') {
     $trace = debug_backtrace();
     $out = "<hr/><div>".$errMsg."<br /><table border='1'>";
 
