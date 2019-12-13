@@ -5,8 +5,7 @@ class TestController extends BaseController {
     function init(){}
 
 
-
-    //处理文章或模板的内容（如图片链接迁移）
+    //迁移富文本中的静态资源内容，并替换成新链接到文本中（新资源暂时放到发布器 s 目录）
     function dealContent($content, $fieldName = 'content', $channel = '', $articleId = '', $tplId = ''){
         $domains = [
             'img.dwstatic.com',
@@ -54,8 +53,14 @@ class TestController extends BaseController {
 
         foreach ($domains as $domain) {
             $regexList = [
-                '/(<img\s+[^<>\/]*src\s*=\s*[\'"])((https?\:)?\/\/'. $domain .'\/[^\'"]+)([\'"][^<>]*\/?>)/i',
-                '/(<embed\s+[^<>\/]*src\s*=\s*[\'"])((https?\:)?\/\/'. $domain .'\/[^\'"]+)([\'"][^<>]*\/?>)/i',
+                '/(<img\s+[^<>]*src\s*=\s*[\'"])((https?\:)?\/\/'. $domain .'\/[^\'"]+)([\'"][^<>]*\/?>)/i',
+                '/(<embed\s+[^<>]*src\s*=\s*[\'"])((https?\:)?\/\/'. $domain .'\/[^\'"]+)([\'"][^<>]*\/?>)/i',
+                '/(<link\s+[^<>]*href\s*=\s*[\'"])((https?\:)?\/\/'. $domain .'\/[^\'"]+)([\'"][^<>]*\/?>)/i',
+                '/(<script\s+[^<>]*src\s*=\s*[\'"])((https?\:)?\/\/'. $domain .'\/[^\'"]+)([\'"][^<>]*\/?>)/i',
+                '/(<source\s+[^<>]*src\s*=\s*[\'"])((https?\:)?\/\/'. $domain .'\/[^\'"]+)([\'"][^<>]*\/?>)/i',
+                '/(<audio\s+[^<>]*src\s*=\s*[\'"])((https?\:)?\/\/'. $domain .'\/[^\'"]+)([\'"][^<>]*\/?>)/i',
+                '/(<video\s+[^<>]*src\s*=\s*[\'"])((https?\:)?\/\/'. $domain .'\/[^\'"]+)([\'"][^<>]*\/?>)/i',
+                '/(<iframe\s+[^<>]*src\s*=\s*[\'"])((https?\:)?\/\/'. $domain .'\/[^\'"]+)([\'"][^<>]*\/?>)/i',
             ];
             foreach ($regexList as $regex) {
                 $content = preg_replace_callback($regex, function($matches) use($fieldName, $channel, $articleId, $tplId) {
@@ -66,6 +71,11 @@ class TestController extends BaseController {
                         $lus->setChannel($channel);
                         $ret = $lus->upByUrl($url);
                         if ($ret['code'] != 0) {
+                            //@todo 日志较多，需要一天内屏蔽
+                            obj('TmpLog')->add('migrateimg_ch_'.$channel.'_art_'.$articleId.'_tpl_'.$tplId, [
+                                'raw_url' => $url,
+                                'ret' => $ret,
+                            ]);
                             return $matches[0];
                         }
                         $newUrl = $ret['url'];
@@ -78,6 +88,13 @@ class TestController extends BaseController {
                         'article_id' => $articleId,
                         'tpl_id' => $tplId,
                     ]);
+
+                    //@todo 日志较多，需要一天内屏蔽
+                    obj('TmpLog')->add('content_replace_ch_'.$channel.'_art_'.$articleId.'_tpl_'.$tplId.'_fd_'.$fieldName, [
+                        'raw' => $matches[0],
+                        'new' => $matches[1] . $newUrl . $matches[4],
+                    ]);
+
                     return $matches[1] . $newUrl . $matches[4];
                 }, $content, 200);
             }
@@ -86,7 +103,6 @@ class TestController extends BaseController {
 
         return $content;
     }
-
 
 
 }
