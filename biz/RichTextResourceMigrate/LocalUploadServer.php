@@ -223,14 +223,6 @@ class LocalUploadServer extends LocalUpload {
         }
 
         return $succ;
-        // if (! move_uploaded_file($tmpFilename, $finalPath)) {
-        //     $this->_ret['code'] = -999;
-        //     $this->_ret['msg'] = 'remote move uploaded file failed';
-        // } else {
-        //     $this->_ret['code'] = 0;
-        //     $this->_ret['url'] = "http://{$GLOBALS['frontend_domain']}/{$this->channel}/s/{$this->getSavepath()}";
-        //     $this->_ret['msg'] = 'remote upload success';
-        // }
     }
 
 

@@ -1,4 +1,4 @@
-        var_dump(obj('TestController')->dealContent(
+        var_dump(obj('ResourceMigrateLog')->migrateByContent(
             'fsjfiopsdfjdso9fjsdofjsd fjd ofjds <img src="<p>
 	&emsp;&emsp;<span>2020新年车库预览，你可以通过收集装饰品，自定义车库中的圣诞树，宴会，院子和雪雕，它将随着2020新年攻势活动的开始而出现。</span> 
 </p>
