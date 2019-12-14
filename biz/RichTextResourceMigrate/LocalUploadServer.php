@@ -313,8 +313,29 @@ class LocalUploadServer extends LocalUpload {
     }
 
 
+    //通过URL上传
     function upByUrl($url){
-        $h = get_headers($url, 1);
+        if (! preg_match('/^(https?\:)?\/\//', $url)) {
+            $this->_ret['code'] = -999;
+            $this->_ret['msg'] = 'URL格式错误';
+            return $this->_ret;
+        }
+
+        if (preg_match('/^\/\//', $url)) {//遇到 // 开头的链接
+            $urls = ["http:{$url}", "https:{$url}"];
+        } else {
+            $urls = [$url];
+        }
+        foreach ($urls as $url) {
+            $h = get_headers($url, 1);
+            if (false === $h) continue;
+        }
+        if (false === $h) {
+            $this->_ret['code'] = -999;
+            $this->_ret['msg'] = 'URL加载信息失败';
+            return $this->_ret;
+        }
+
         if ($h['Content-Length'] > $this->_limit['maxSize']) {
             $this->_ret['code'] = -999;
             $this->_ret['msg'] = "文件大小超过{$this->_limit['maxSize']}{$h['Accept-Ranges']}";
@@ -331,12 +352,14 @@ class LocalUploadServer extends LocalUpload {
         }
         $this->_ret['fileExt'] = $ext;
 
+        //开始下载
         $c = file_get_contents($url);
-        if (empty($c)) {
+        if (false === $c) {
             $this->_ret['code'] = -999;
             $this->_ret['msg'] = '下载失败，暂时忽略';
             return $this->_ret;
         }
+        
         $dir = BASE_DIR . 'protected/data/up_cache';
         @mkdir($dir, 0777, true);
         $localfile = "{$dir}/".microtime(1).'.'.$this->_ret['fileExt'];

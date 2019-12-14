@@ -34,7 +34,7 @@ class ResourceMigrateLog extends Model {
 
     //将静态资源暂时迁移到 s 目录，返回新链接
     public function migrateByLink($url, $fieldName = 'picurl', $channel = '', $articleId = '', $tplId = ''){
-        $log = obj('ResourceMigrateLog')->find(['raw_url' => $url]);
+        $log = $this->find(['raw_url' => $url]);
         if (empty($log)) {//针对没有迁移过的链接处理
             $lus = obj('LocaluploadServer');
             $lus->setChannel($channel);
@@ -51,7 +51,7 @@ class ResourceMigrateLog extends Model {
         } else {
             $newUrl = $log['new_url'];
         }
-        obj('ResourceMigrateLog')->save($url, $newUrl, [
+        $this->save($url, $newUrl, [
             'field_name' => $fieldName,
             'channel' => $channel,
             'article_id' => $articleId,
@@ -61,7 +61,7 @@ class ResourceMigrateLog extends Model {
     }
 
 
-    //迁移富文本中的静态资源内容，并替换成新链接到文本中（新资源暂时放到发布器 s 目录）
+    //迁移富文本中的静态资源内容，并替换成新链接到文本中（新资源暂时放到发布器 s 目录）  @todo 对于防盗链的暂时无法迁移
     public function migrateByContent($content, $fieldName = 'content', $channel = '', $articleId = '', $tplId = ''){
         $domains = [
             'img.dwstatic.com',
