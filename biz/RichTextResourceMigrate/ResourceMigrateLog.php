@@ -27,6 +27,8 @@ class ResourceMigrateLog extends Model {
                 'new_url' => $newUrl?:'',
                 'raw_domain' => $rawDomain?:'',
                 'new_domain' => $newDomain?:'',
+                'file_sha1' => $data['sha1']?:'',
+                'up_log' => $data['up_log']?:'',
             ]);
         }
     }
@@ -36,8 +38,19 @@ class ResourceMigrateLog extends Model {
     public function migrateByLink($url, $fieldName = 'picurl', $channel = '', $articleId = '', $tplId = ''){
         $log = $this->find(['raw_url' => $url]);
         if (empty($log)) {//针对没有迁移过的链接处理
-            $lus = obj('LocaluploadServer');
+            $lus = obj('LocalUploadServer', [], '', true);
             $lus->setChannel($channel);
+            if ($articleId && $channel) {
+                $articleObj = obj('Article', [$channel], '', true);
+                $article = $articleObj->find(['article_id' => $articleId]);
+                if ($article && $article['posttime']) {//指定文章专用的静态资源路径
+                    $savedir = date('yW', $article['posttime']).'/'.$articleId;
+                    $lus->setSavepath($savedir, '');
+                }
+            }elseif ($tplId) {//则指定模板专用的静态资源路径
+                $lus->setSavepath($tplId);
+            }//如无指定，则按年月日建目录保存
+
             $ret = $lus->upByUrl($url);
             if ($ret['code'] != 0) {
                 //@todo 日志较多，需要一天内屏蔽
@@ -48,14 +61,20 @@ class ResourceMigrateLog extends Model {
                 return $url;//没有上传成功，返回原链接
             }
             $newUrl = $ret['url'];
+            $sha1 = $ret['sha1'];
+            $upLog = json_encode($ret, JSON_UNESCAPED_UNICODE);
         } else {
             $newUrl = $log['new_url'];
+            $sha1 = $log['file_sha1'];
+            $upLog = $log['up_log'];
         }
         $this->save($url, $newUrl, [
             'field_name' => $fieldName,
             'channel' => $channel,
             'article_id' => $articleId,
             'tpl_id' => $tplId,
+            'file_sha1' => $sha1,
+            'up_log' => $upLog,
         ]);
         return $newUrl;
     }

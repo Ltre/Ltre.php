@@ -106,12 +106,18 @@ class LocalUpload {
             $this->_ret['msg'] = "非法扩展名[{$ext}]";
             return false;
         }
-        foreach ($this->_limit['fileExt'] as $regExp => $callback) {
-            if (! preg_match($regExp, $ext)) {
-                $this->_ret['msg'] = call_user_func($callback, $regExp, $ext);
-                return false;
-            }
-        }
+
+        // if ($this->_limit['fileExt'] && in_array($ext, $this->_limit['fileExt'])) {
+        //     $this->_ret['msg'] = "仅限扩展名：".join(',', $this->_limit['fileExt']);
+        //     return false;
+        // }//@todo 待测试
+
+        // foreach ($this->_limit['fileExt'] as $regExp => $callback) {
+        //     if (! preg_match($regExp, $ext)) {
+        //         $this->_ret['msg'] = call_user_func($callback, $regExp, $ext);
+        //         return false;
+        //     }
+        // }
         return true;
     }
     
@@ -156,6 +162,9 @@ class LocalUploadServer extends LocalUpload {
     
     protected $channel = 'test';
 
+    protected $savedir; //相对目录。例如传值 a/b ，相对于 /data/cms_data/s/wot，最终构成全路径 /data/cms_data/s/wot/a/b
+    protected $savename; //存储文件名。例如 c.txt，配合第一个参数得到的全路径是：/data/cms_data/s/wot/a/b/c.txt
+
     protected $savepath;
 
     //设置并防止乱用不存在的专区目录
@@ -166,22 +175,34 @@ class LocalUploadServer extends LocalUpload {
     }
 
 
-    //设置文件保存的相对路径，例如相对于 /data/cms_data/s/wot 的传值"a/b/c.txt"，最终存储完整路径是：/data/cms_data/s/wot/a/b/c.txt
-    public function setSavepath($savepath){
+    /**
+     * 设置文件保存的相对路径和文件名
+     *
+     * @param string $savedir 相对目录。例如传值 a/b ，相对于 /data/cms_data/s/wot，最终构成全路径 /data/cms_data/s/wot/a/b
+     * @param string $basename 存储文件名。例如 c.txt，配合第一个参数得到的全路径是：/data/cms_data/s/wot/a/b/c.txt
+     * @return void
+     */
+    public function setSavepath($savedir, $savename = ''){
         //没有指定路径，或指定了 ../ 路径的，都被忽略
-        if ($savepath && !preg_match('/\.\.\//', $savepath)) {
-            $this->savepath = $savepath;//@todo 需要提高安全性
+        if ($savedir && !preg_match('/\.\.\//', $savedir)) {
+            $this->savedir = $savedir;//@todo 需要提高安全性
+        }
+        if ($savename && ! preg_match('/\//', $savename)) {
+            $this->savename = $savename;
         }
     }
 
 
     protected function getSavepath(){
-        if (! $this->savepath) {
-            $saveDir = date('Y').'/'.date('m').'/'.date('d');// 如 2015/09/13
-            $filename = date('His-') . ceil(microtime(true) % 1000) . '-hex' . dechex(rand(1, 1000)) . '.' . $this->_ret['fileExt'];//如 192942-782-hex354.jpg
-            $this->savepath = $saveDir . '/' .$filename;
+        if (! $this->savedir) {
+            // 如 default/2015/09/13
+            $this->savedir = 'default/' . date('Y').'/'.date('m').'/'.date('d');
         }
-        return $this->savepath;
+        if (! $this->savename) {
+            //如 192942-782-hex354.jpg
+            $this->savename = date('His-') . ceil(microtime(true) % 1000) . '-hex' . dechex(rand(1, 1000)) . '.' . $this->_ret['fileExt'];
+        }
+        return rtrim($this->savedir, '/') . '/' . $this->savename;
     }
 
 
@@ -378,10 +399,11 @@ class LocalUploadServer extends LocalUpload {
     static function testServer(){
         $server = new LocalUploadServer();
         $server->setChannel('wot');
-        $server->setSavepath('a/b/c/d.txt');
-        $server->setLimit(array('maxSize' => 5242880, 'fileExt' => [
-            '/^mp4$/i' => function($regExp, $ext){ return '仅限上传MP4文件!'; }
-        ]));//5MB
+        $server->setSavepath('a/b/c', 'd.txt');
+        // $server->setLimit(array('maxSize' => 5242880, 'fileExt' => [
+        //     '/^mp4$/i' => function($regExp, $ext){ return '仅限上传MP4文件!'; },
+        //     '/^txt$/i' => function($regExp, $ext){ return '仅限上传MP4文件!'; },
+        // ]));//5MB
         $ret = $server->up($_FILES['f']);
         echo json_encode($ret);
     }

@@ -8,6 +8,8 @@ CREATE TABLE `resource_migrate_log` (
   `channel` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
   `raw_domain` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
   `new_domain` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `file_sha1` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `up_log` text COLLATE utf8mb4_unicode_ci COMMENT '上传日志',
   `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`log_id`),
   KEY `new_url` (`new_url`(191)),
@@ -16,7 +18,6 @@ CREATE TABLE `resource_migrate_log` (
   KEY `article_id` (`article_id`),
   KEY `tpl_id` (`tpl_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='静态资源迁移记录';
-
 
 
 CREATE TABLE `channel` (
@@ -36,4 +37,14 @@ CREATE TABLE `channel` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='频道信息表';
 
 
+CREATE TABLE `tmp_log` (
+  `log_id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `name` text NOT NULL COMMENT '日志句柄',
+  `note` text NOT NULL COMMENT '注释',
+  `content` longtext NOT NULL,
+  `log_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `log_ip` varchar(15) NOT NULL,
+  PRIMARY KEY (`log_id`),
+  KEY `log_time` (`log_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='临时日志表'
 
