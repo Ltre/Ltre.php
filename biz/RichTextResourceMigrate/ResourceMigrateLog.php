@@ -8,6 +8,13 @@ class ResourceMigrateLog extends Model {
 
     protected $table_name = 'resource_migrate_log';
 
+
+    //一些公共引用的资源链接（不因归属于模板或文章而被分配到某些具备特定数据特征的目录）
+    protected $commonLinks = [
+        'assets.dwstatic.com/video/vpp.swf',
+    ];
+
+
     function save($rawUrl, $newUrl, $data = []){
         $conds = ['raw_url' => $rawUrl, 'new_url' => $newUrl];
         foreach (['field_name', 'tpl_id', 'article_id', 'channel'] as $f) {
@@ -36,20 +43,51 @@ class ResourceMigrateLog extends Model {
 
     //将静态资源暂时迁移到 s 目录，返回新链接
     public function migrateByLink($url, $fieldName = 'picurl', $channel = '', $articleId = '', $tplId = ''){
-        $log = $this->find(['raw_url' => $url]);
+        if (! preg_match('/^(https?\:)?\/\//', $url)) {
+            return $url;//URL规则不符
+        }
+
+        $log = $this->find(['raw_url' => $url] + ($channel ? ['channel' => $channel] : []));//专区内免重传
         if (empty($log)) {//针对没有迁移过的链接处理
             $lus = obj('LocalUploadServer', [], '', true);
             $lus->setChannel($channel);
-            if ($articleId && $channel) {
-                $articleObj = obj('Article', [$channel], '', true);
-                $article = $articleObj->find(['article_id' => $articleId]);
-                if ($article && $article['posttime']) {//指定文章专用的静态资源路径
-                    $savedir = date('yW', $article['posttime']).'/'.$articleId;
-                    $lus->setSavepath($savedir, '');
+            $setted = false;
+            $urlInfo = parse_url($url);
+            if (! in_array($urlInfo['host'].($urlInfo['port']?':8080':'').'/'.ltrim($urlInfo['path'], '/'), $this->commonLinks)) {
+                if ($articleId && $channel) {
+                    $articleObj = obj('Article', [$channel], '', true);
+                    $article = $articleObj->find(['article_id' => $articleId]);
+                    if ($article && $article['posttime']) {//指定文章专用的静态资源路径
+                        $savedir = date('yW', $article['posttime']).'/'.$articleId;
+                        $lus->setSavepath($savedir, '');
+                        $setted = true;
+                    }
+                } elseif ($tplId) {//指定模板专用的静态资源路径
+                    $lus->setSavepath("m/".$tplId);
+                    $setted = true;
                 }
-            }elseif ($tplId) {//则指定模板专用的静态资源路径
-                $lus->setSavepath($tplId);
-            }//如无指定，则按年月日建目录保存
+            }
+
+            if (! $setted) {//没有指定特定路径，则：
+                $subExp = '[^@\$\^&\*\(\)=<>{}\'",\.\/]';
+                if (preg_match('/^\/(' . $subExp . '+(\.|\/))+' . $subExp . '+\.\w+$/', $urlInfo['path'])) {
+                    //如path合乎常规，则按原链接地址规律分配路径
+                    //例如：http://img.dwstatic.com/wot/1912/440083232256/440083900732.jpg
+                    $fullpath = "external/{$urlInfo['host']}/".ltrim($urlInfo['path'], '/');
+                    $savedir = dirname($fullpath);
+                    $savename = basename($fullpath);
+                } else {
+                    //否则，可能由上传核心代码分配文件名
+                    //例如：http://assets.dwstatic.com/b=lego/2.0.0/js&f=lego.switchable.js
+                    $savedir = "external/{$urlInfo['host']}/".date('Y').'/'.date('m').'/'.date('d');
+                    if (preg_match('/([\w\-_]+\.)+[\w\-_]+$/', $urlInfo['path'], $matchesOfPath)) {
+                        $savename = $matchesOfPath[0];//获取右侧的字串，例如 abc.jpg
+                    } else {
+                        $savename = '';
+                    }
+                }
+                $lus->setSavepath($savedir, $savename);
+            }
 
             $ret = $lus->upByUrl($url);
             if ($ret['code'] != 0) {
@@ -121,6 +159,9 @@ class ResourceMigrateLog extends Model {
             '5253.com',
             'www.5253.com',
             'ojiastoreimage.bs2dl.huanjuyun.com',
+            'img.lolbox.duowan.com',
+            'img.game.dwstatic.com',
+            'f2e.duowan.com',
         ];
         $dws = ['bbs', 'tu', 'szhuodong', 'www', 'pc', 'wot', 'lol', 'df', 'tv', '5253', 'smvideo'];
         foreach ($dws as $d) $domain[] = "{$d}.duowan.com";
