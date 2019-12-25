@@ -165,9 +165,12 @@ class LocalUploadServer extends LocalUpload {
     protected $savedir; //相对目录。例如传值 a/b ，相对于 /data/cms_data/s/wot，最终构成全路径 /data/cms_data/s/wot/a/b
     protected $savename; //存储文件名。例如 c.txt，配合第一个参数得到的全路径是：/data/cms_data/s/wot/a/b/c.txt
 
-    protected $savepath;
-
-    //设置并防止乱用不存在的专区目录
+    /**
+     * [开放方法]
+     * 
+     * 设置并防止乱用不存在的专区目录
+     *
+     */
     public function setChannel($channel){
         if (obj('Channel')->find(['channel' => $channel])) {
             $this->channel = $channel ?: obj('Channel')->getCurrChannel() ?: $this->channel;
@@ -176,13 +179,19 @@ class LocalUploadServer extends LocalUpload {
 
 
     /**
+     * [开放方法]
+     * 
      * 设置文件保存的相对路径和文件名
+     * 
+     * 注：该方法在up()和upByUrl()上传模式均可使用
      *
      * @param string $savedir 相对目录。例如传值 a/b ，相对于 /data/cms_data/s/wot，最终构成全路径 /data/cms_data/s/wot/a/b
      * @param string $basename 存储文件名。例如 c.txt，配合第一个参数得到的全路径是：/data/cms_data/s/wot/a/b/c.txt
      * @return void
      */
     public function setSavepath($savedir, $savename = ''){
+        $savedir = trim($savedir, '/.');
+        $savename = trim($savename, '/.');
         //没有指定路径，或指定了 ../ 路径的，都被忽略
         if ($savedir && !preg_match('/\.\.\//', $savedir)) {
             $this->savedir = $savedir;//@todo 需要提高安全性
@@ -190,6 +199,37 @@ class LocalUploadServer extends LocalUpload {
         if ($savename && ! preg_match('/\//', $savename)) {
             $this->savename = $savename;
         }
+    }
+
+
+    /**
+     * [开放方法]
+     * 
+     * 模仿来源链接的规律，自动设置保存路径
+     * 
+     * 注：该方法仅在采用upByUrl()方式上传时使用
+     */
+    public function setSavepathByUrlPattern($url){
+        $urlInfo = parse_url($url);
+        $subExp = '[^@\$\^&\*\(\)=<>{}\'",\.\/]';
+        $regex = '/^\/(' . $subExp . '+(\.|\/))+' . $subExp . '+\.\w+$/';
+        if (preg_match($regex, $urlInfo['path'])) {
+            //如path合乎常规，则按原链接地址规律分配路径
+            //例如：http://img.dwstatic.com/wot/1912/440083232256/440083900732.jpg
+            $fullpath = "external/{$urlInfo['host']}/".ltrim($urlInfo['path'], '/');
+            $savedir = dirname($fullpath);
+            $savename = basename($fullpath);
+        } else {
+            //否则，可能由上传核心代码分配文件名
+            //例如：http://assets.dwstatic.com/b=lego/2.0.0/js&f=lego.switchable.js
+            $savedir = "external/{$urlInfo['host']}/".date('Y').'/'.date('m').'/'.date('d');
+            if (preg_match('/([\w\-_]+\.)+[\w\-_]+$/', $urlInfo['path'], $matchesOfPath)) {
+                $savename = $matchesOfPath[0];//获取右侧的字串，例如 abc.jpg
+            } else {
+                $savename = '';
+            }
+        }
+        $this->setSavepath($savedir, $savename);
     }
 
 
@@ -363,8 +403,12 @@ class LocalUploadServer extends LocalUpload {
             return $this->_ret;
         }
 
+        //处理特殊情况：下载某些HTML时有可能得到数组
+        $contentType = is_array($h['Content-Type']) ? $h['Content-Type'][0] : $$h['Content-Type'];
+
+        //获取合适的文件扩展名
         $ext = $this->_mimetype2ext(
-            trim(array_shift(explode(';', $h['Content-Type']))),
+            trim(array_shift(explode(';', $contentType))),
             array_shift(explode('?', basename($url)))
         );
         if (empty($ext)) {
@@ -375,6 +419,9 @@ class LocalUploadServer extends LocalUpload {
 
         //开始下载
         $c = file_get_contents($url);
+        if (false === $c) {
+            $c = shell_exec("curl '{$url}' -H 'Connection: keep-alive' -H 'Pragma: no-cache' -H 'Cache-Control: no-cache' -H 'Upgrade-Insecure-Requests: 1' -H 'User-Agent: Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.79 Safari/537.36' -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9' -H 'Accept-Encoding: gzip, deflate' -H 'Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,ja;q=0.7,zh-TW;q=0.6' --compressed --insecure");
+        }
         if (false === $c) {
             $this->_ret['code'] = -999;
             $this->_ret['msg'] = '下载失败，暂时忽略';

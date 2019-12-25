@@ -69,24 +69,7 @@ class ResourceMigrateLog extends Model {
             }
 
             if (! $setted) {//没有指定特定路径，则：
-                $subExp = '[^@\$\^&\*\(\)=<>{}\'",\.\/]';
-                if (preg_match('/^\/(' . $subExp . '+(\.|\/))+' . $subExp . '+\.\w+$/', $urlInfo['path'])) {
-                    //如path合乎常规，则按原链接地址规律分配路径
-                    //例如：http://img.dwstatic.com/wot/1912/440083232256/440083900732.jpg
-                    $fullpath = "external/{$urlInfo['host']}/".ltrim($urlInfo['path'], '/');
-                    $savedir = dirname($fullpath);
-                    $savename = basename($fullpath);
-                } else {
-                    //否则，可能由上传核心代码分配文件名
-                    //例如：http://assets.dwstatic.com/b=lego/2.0.0/js&f=lego.switchable.js
-                    $savedir = "external/{$urlInfo['host']}/".date('Y').'/'.date('m').'/'.date('d');
-                    if (preg_match('/([\w\-_]+\.)+[\w\-_]+$/', $urlInfo['path'], $matchesOfPath)) {
-                        $savename = $matchesOfPath[0];//获取右侧的字串，例如 abc.jpg
-                    } else {
-                        $savename = '';
-                    }
-                }
-                $lus->setSavepath($savedir, $savename);
+                $lus->setSavepathByUrlPattern($url);
             }
 
             $ret = $lus->upByUrl($url);
@@ -161,38 +144,45 @@ class ResourceMigrateLog extends Model {
             'ojiastoreimage.bs2dl.huanjuyun.com',
             'img.lolbox.duowan.com',
             'img.game.dwstatic.com',
-            'f2e.duowan.com',
         ];
-        $dws = ['bbs', 'tu', 'szhuodong', 'www', 'pc', 'wot', 'lol', 'df', 'tv', '5253', 'smvideo'];
+        $dws = ['bbs', 'tu', 'szhuodong', 'www', 'pc', 'wot', 'lol', 'df', 'tv', '5253', 'smvideo', 'f2e', 'pic'];
         foreach ($dws as $d) $domain[] = "{$d}.duowan.com";
         foreach ($dws as $d) $domain[] = "{$d}.duowan.cn";
 
         foreach ($domains as $domain) {
             $domMap = [
-                'img' => 'src',
-                'embed' => 'src',
-                'link' => 'href',
-                'script' => 'src',
-                'source' => 'src',
-                'audio' => 'src',
-                'video' => 'src',
-                'iframe' => 'src',
+                'img' => [
+                    'src',
+                    'data-original',//业务定义的
+                    'zoomfile',//业务定义的
+                    'data-src',//业务定义的
+                ],
+                'embed' => ['src'],
+                'link' => ['href'],
+                'script' => ['src'],
+                'source' => ['src'],
+                'audio' => ['src'],
+                'video' => ['src'],
+                'iframe' => ['src'],
             ];
-            foreach ($domMap as $tagName => $attrName) {
-                $regex = '/(<'.$tagName.'\s+[^<>]*'.$attrName.'\s*=\s*[\'"])((https?\:)?\/\/'. $domain .'\/[^\'"]+)([\'"][^<>]*\/?>)/i';
-                
-                $content = preg_replace_callback($regex, function($matches) use($fieldName, $channel, $articleId, $tplId) {
-                    
-                    $newUrl = $this->migrateByLink($matches[2], $fieldName, $channel, $articleId, $tplId);
 
-                    //@todo 日志较多，需要一天内屏蔽
-                    obj('TmpLog')->add('content_replace_ch_'.$channel.'_art_'.$articleId.'_tpl_'.$tplId.'_fd_'.$fieldName, [
-                        'raw' => $matches[0],
-                        'new' => $matches[1] . $newUrl . $matches[4],
-                    ]);
+            foreach ($domMap as $tagName => $attrNameList) {
+                foreach ($attrNameList as $attrName) {
+                    $regex = '/(<'.$tagName.'\s+[^<>]*'.$attrName.'\s*=\s*[\'"])((https?\:)?\/\/'. $domain .'\/[^\'"]+)([\'"][^<>]*\/?>)/i';
 
-                    return $matches[1] . $newUrl . $matches[4];
-                }, $content, 200);
+                    $content = preg_replace_callback($regex, function($matches) use($fieldName, $channel, $articleId, $tplId) {
+
+                        $newUrl = $this->migrateByLink($matches[2], $fieldName, $channel, $articleId, $tplId);
+
+                        //@todo 日志较多，需要一天内屏蔽
+                        obj('TmpLog')->add('content_replace_ch_'.$channel.'_art_'.$articleId.'_tpl_'.$tplId.'_fd_'.$fieldName, [
+                            'raw' => $matches[0],
+                            'new' => $matches[1] . $newUrl . $matches[4],
+                        ]);
+
+                        return $matches[1] . $newUrl . $matches[4];
+                    }, $content, 200);
+                }
             }
 
         }
