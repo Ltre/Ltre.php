@@ -229,6 +229,12 @@ class LocalUploadServer extends LocalUpload {
                 $savename = '';
             }
         }
+
+        //@todo 此处待测试
+        if (strlen($url) > 200) {//检查链接的长度，如超过200字节，则拒绝模仿目录
+            $savedir = '';
+        }
+
         $this->setSavepath($savedir, $savename);
     }
 

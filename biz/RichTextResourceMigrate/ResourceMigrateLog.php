@@ -144,12 +144,16 @@ class ResourceMigrateLog extends Model {
             'ojiastoreimage.bs2dl.huanjuyun.com',
             'img.lolbox.duowan.com',
             'img.game.dwstatic.com',
+            'f2e.yy.com',
         ];
-        $dws = ['bbs', 'tu', 'szhuodong', 'www', 'pc', 'wot', 'lol', 'df', 'tv', '5253', 'smvideo', 'f2e', 'pic'];
-        foreach ($dws as $d) $domain[] = "{$d}.duowan.com";
-        foreach ($dws as $d) $domain[] = "{$d}.duowan.cn";
+        $dws = ['bbs', 'tu', 'szhuodong', 'www', 'pc', 'wot', 'lol', 'df', 'tv', '5253', 'smvideo', 'f2e', 'pic', 'f2e', 'sz'];
+        foreach ($dws as $d) $domains[] = "{$d}.duowan.com";
+        foreach ($dws as $d) $domains[] = "{$d}.duowan.cn";
 
         foreach ($domains as $domain) {
+            $domainExp = str_replace(['.', '-'], ['\\.', '\\-'], $domain);
+
+            //DOM处理开始 --
             $domMap = [
                 'img' => [
                     'src',
@@ -168,9 +172,8 @@ class ResourceMigrateLog extends Model {
 
             foreach ($domMap as $tagName => $attrNameList) {
                 foreach ($attrNameList as $attrName) {
-                    $regex = '/(<'.$tagName.'\s+[^<>]*'.$attrName.'\s*=\s*[\'"])((https?\:)?\/\/'. $domain .'\/[^\'"]+)([\'"][^<>]*\/?>)/i';
-
-                    $content = preg_replace_callback($regex, function($matches) use($fieldName, $channel, $articleId, $tplId) {
+                    $regex = '/(<'.$tagName.'\s+[^<>]*'.$attrName.'\s*=\s*[\'"])((https?\:)?\/\/'. $domainExp .'\/[^\'"]+)([\'"][^<>]*\/?>)/i';
+                    $content = preg_replace_callback($regex, function($matches) use ($fieldName, $channel, $articleId, $tplId) {
 
                         $newUrl = $this->migrateByLink($matches[2], $fieldName, $channel, $articleId, $tplId);
 
@@ -181,9 +184,43 @@ class ResourceMigrateLog extends Model {
                         ]);
 
                         return $matches[1] . $newUrl . $matches[4];
-                    }, $content, 200);
+                    }, $content, 500);
                 }
             }
+            //-- DOM处理结束
+
+            //CSS处理开始(url语法) --
+            $regex = '/(url\s*\(\s*[\'"]?\s*)((https?\:)?\/\/' . $domainExp . '\/[^\'"\(\)\:]+)(\s*[\'"]?\s*\))/i';
+            $content = preg_replace_callback($regex, function($matches) use ($fieldName, $channel, $articleId, $tplId) {
+                $newUrl = $this->migrateByLink($matches[2], $fieldName, $channel, $articleId, $tplId);
+
+                //@todo 日志较多，需要一天内屏蔽
+                obj('TmpLog')->add('content_replace_ch_'.$channel.'_art_'.$articleId.'_tpl_'.$tplId.'_fd_'.$fieldName, [
+                    'raw' => $matches[0],
+                    'new' => $matches[1] . $newUrl . $matches[4],
+                ]);
+
+                return $matches[1] . $newUrl . $matches[4];
+            }, $content, 500);
+            //-- CSS处理结束(url语法)
+
+
+            //JS对象src属性处理开始 --
+            $regex = '/([\w_]+\s*\.\s*[\w_]+\s*=\s*[\'"]\s*)((https?\:)?\/\/' . $domainExp . '\/[^\'"\:]+)(\s*[\'"])/i';
+            $content = preg_replace_callback($regex, function($matches) use ($fieldName, $channel, $articleId, $tplId) {
+                $newUrl = $this->migrateByLink($matches[2], $fieldName, $channel, $articleId, $tplId);
+
+                //@todo 日志较多，需要一天内屏蔽
+                obj('TmpLog')->add('content_replace_ch_'.$channel.'_art_'.$articleId.'_tpl_'.$tplId.'_fd_'.$fieldName, [
+                    'raw' => $matches[0],
+                    'new' => $matches[1] . $newUrl . $matches[4],
+                ]);
+
+                return $matches[1] . $newUrl . $matches[4];
+            }, $content, 500);
+            //-- JS对象src属性处理结束
+
+            //@todo 待匹配JSON中业务常用的链接属性名：如 img, src
 
         }
 
