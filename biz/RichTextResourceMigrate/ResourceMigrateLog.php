@@ -34,7 +34,7 @@ class ResourceMigrateLog extends Model {
                 'new_url' => $newUrl?:'',
                 'raw_domain' => $rawDomain?:'',
                 'new_domain' => $newDomain?:'',
-                'file_sha1' => $data['sha1']?:'',
+                'file_sha1' => $data['file_sha1']?:'',
                 'up_log' => $data['up_log']?:'',
             ]);
         }
@@ -103,53 +103,7 @@ class ResourceMigrateLog extends Model {
 
     //迁移富文本中的静态资源内容，并替换成新链接到文本中（新资源暂时放到发布器 s 目录）  @todo 对于防盗链的暂时无法迁移
     public function migrateByContent($content, $fieldName = 'content', $channel = '', $articleId = '', $tplId = ''){
-        $domains = [
-            'img.dwstatic.com',
-            'img1.dwstatic.com',
-            'img2.dwstatic.com',
-            'img3.dwstatic.com',
-            'img4.dwstatic.com',
-            'img5.dwstatic.com',
-            's1.dwstatic.com',
-            's2.dwstatic.com',
-            's3.dwstatic.com',
-            's4.dwstatic.com',
-            's5.dwstatic.com',
-            's6.dwstatic.com',
-            's7.dwstatic.com',
-            's8.dwstatic.com',
-            's9.dwstatic.com',
-            's10.dwstatic.com',
-            's11.dwstatic.com',
-            's12.dwstatic.com',
-            's13.dwstatic.com',
-            'pic.dwstatic.com',
-            'pic1.dwstatic.com',
-            'pic2.dwstatic.com',
-            'pic3.dwstatic.com',
-            'pub.dwstatic.com',
-            'assets.dwstatic.com',
-            'w2.dwstatic.com',
-            'w5.dwstatic.com',
-            'vimg.dwstatic.com',
-            'pkg.5253.com',
-            'avatar.bbs.duowan.com',
-            'att.bbs.duowan.com',
-            'screenshot.dwstatic.com',
-            'ya1.dwstatic.com',
-            'ya2.dwstatic.com',
-            'ya3.dwstatic.com',
-            '5253.com',
-            'www.5253.com',
-            'ojiastoreimage.bs2dl.huanjuyun.com',
-            'img.lolbox.duowan.com',
-            'img.game.dwstatic.com',
-            'f2e.yy.com',
-        ];
-        $dws = ['bbs', 'tu', 'szhuodong', 'www', 'pc', 'wot', 'lol', 'df', 'tv', '5253', 'smvideo', 'f2e', 'pic', 'f2e', 'sz'];
-        foreach ($dws as $d) $domains[] = "{$d}.duowan.com";
-        foreach ($dws as $d) $domains[] = "{$d}.duowan.cn";
-
+        $domains = $this->_getDomainsBySource();
         foreach ($domains as $domain) {
             $domainExp = str_replace(['.', '-'], ['\\.', '\\-'], $domain);
 
@@ -225,6 +179,59 @@ class ResourceMigrateLog extends Model {
         }
 
         return $content;
+    }
+
+
+    //获取来源域名
+    private function _getDomainsBySource(){
+        $domains = [
+            'img.dwstatic.com',
+            'img1.dwstatic.com',
+            'img2.dwstatic.com',
+            'img3.dwstatic.com',
+            'img4.dwstatic.com',
+            'img5.dwstatic.com',
+            's1.dwstatic.com',
+            's2.dwstatic.com',
+            's3.dwstatic.com',
+            's4.dwstatic.com',
+            's5.dwstatic.com',
+            's6.dwstatic.com',
+            's7.dwstatic.com',
+            's8.dwstatic.com',
+            's9.dwstatic.com',
+            's10.dwstatic.com',
+            's11.dwstatic.com',
+            's12.dwstatic.com',
+            's13.dwstatic.com',
+            'pic.dwstatic.com',
+            'pic1.dwstatic.com',
+            'pic2.dwstatic.com',
+            'pic3.dwstatic.com',
+            'pub.dwstatic.com',
+            'assets.dwstatic.com',
+            'w2.dwstatic.com',
+            'w5.dwstatic.com',
+            'vimg.dwstatic.com',
+            'pkg.5253.com',
+            'avatar.bbs.duowan.com',
+            'att.bbs.duowan.com',
+            'screenshot.dwstatic.com',
+            'ya1.dwstatic.com',
+            'ya2.dwstatic.com',
+            'ya3.dwstatic.com',
+            '5253.com',
+            'www.5253.com',
+            'ojiastoreimage.bs2dl.huanjuyun.com',
+            'img.lolbox.duowan.com',
+            'img.game.dwstatic.com',
+            'f2e.yy.com',
+        ];
+        $dws = ['bbs', 'tu', 'szhuodong', 'www', 'pc', 'wot', 'lol', 'df', 'tv', '5253', 'smvideo', 'f2e', 'pic', 'f2e', 'sz'];
+        foreach ($dws as $d) $domains[] = "{$d}.duowan.com";
+        foreach ($dws as $d) $domains[] = "{$d}.duowan.cn";
+        
+        return $domains;
     }
 
 }

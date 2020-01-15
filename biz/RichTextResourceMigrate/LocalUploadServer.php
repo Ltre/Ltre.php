@@ -207,6 +207,8 @@ class LocalUploadServer extends LocalUpload {
      * 
      * 模仿来源链接的规律，自动设置保存路径
      * 
+     * @todo 要注意链接的长度，如超过200字节，则 setSavepath('', '')
+     * 
      * 注：该方法仅在采用upByUrl()方式上传时使用
      */
     public function setSavepathByUrlPattern($url){
@@ -230,9 +232,8 @@ class LocalUploadServer extends LocalUpload {
             }
         }
 
-        //@todo 此处待测试
-        if (strlen($url) > 200) {//检查链接的长度，如超过200字节，则拒绝模仿目录
-            $savedir = '';
+        if (strlen($url) > 200) {
+            $savedir = $savename = '';
         }
 
         $this->setSavepath($savedir, $savename);
