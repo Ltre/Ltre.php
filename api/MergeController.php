@@ -66,8 +66,9 @@ class MergeController extends BaseController {
 
         $headers = [
             "Host: {$_SERVER['HTTP_HOST']}",
-            "Cookie:".preg_replace('/PHPSESSID=[^\s]*/', '', $_SERVER['HTTP_COOKIE']),
+            "Cookie:".preg_replace('/PHPSESSID=[^\s]*/', '', $_SERVER['HTTP_COOKIE']), //应去掉PHP会话，否则请求失败
         ];
+        //转发其他源headers
         foreach ($_SERVER as $k => $v) {
             if (preg_match('/^HTTP_(.+)$/', $k, $matches)) {
                 $matches[1] = ucfirst(strtolower($matches[1]));
@@ -75,6 +76,7 @@ class MergeController extends BaseController {
                 $headers[] = "{$matches[1]}: {$v}";
             }
         }
+        $headers = array_merge($headers, $this->_genIpHeaders());
         $headers = join("\n", $headers);
 
         $http = new dwHttp();
@@ -90,6 +92,18 @@ class MergeController extends BaseController {
         }
 
         $this->jsonOutput($respList);
+    }
+
+
+    private function _genIpHeaders(){
+        $headers = [];
+        $keys = ['HTTP_X_REAL_IP', 'HTTP_CDN_SRC_IP', 'HTTP_X_FORWARDED_FOR', 'HTTP_CLIENT_IP'];
+        foreach ($keys as $key) {
+            if (isset($_SERVER[$key])) {
+                $headers[] = ucfirst(strtolower(preg_replace('/^HTTP_/', '', $keys))) . ': ' . Utils::getIP();
+            }
+        }
+        return $headers;
     }
 
 }
