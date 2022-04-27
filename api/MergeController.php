@@ -86,6 +86,7 @@ class MergeController extends BaseController {
             if (strtoupper($group['method']) == 'POST') {
                 $resp = $http->post($url, $group['data'], 5, $headers);
             } else {
+                $url .= (preg_match('/\?/', $url) ? '&' : '?') . http_build_query($group['data']);
                 $resp = $http->get($url, 5, $headers);
             }
             $respList[] = json_decode($resp, 1) ?: $resp;
