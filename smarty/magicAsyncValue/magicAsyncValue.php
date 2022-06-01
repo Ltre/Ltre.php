@@ -6,6 +6,7 @@
  * @param $codeOrId 
  *      mode采用set模式时，传自定义PHP代码；
  *      mode采用get模式时，传代码的缓存ID
+ *
  * @param $mode 模式
  *      - set: 
  *          在模板上调用（如<{Utils::magicAsyncValue("结尾有return语句的自定义PHP代码")}>）时，
@@ -13,7 +14,9 @@
  *          并在smarty模板中标记好缓存id，便于接下来使用ajax异步获取。
  *      - get: 
  *          前端模板中向接口获取指定缓存PHP代码的运行结果字符串时，采用此模式。
- * 
+ *
+ * @param $inf 自定义接口URI
+ *
  * 使用：
  *      smarty模板： 
  *          简单的例子：
