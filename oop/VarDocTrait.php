@@ -18,16 +18,12 @@
 trait VarDocTrait {
 
     function __get($name){
-        if (is_object($this->{$name})) {
-            return $this->{$name};
-        }
+        if (is_object($this->{$name})) return $this->{$name};
 
         $prop = new ReflectionProperty($this, $name);
 
         list ($is, $clazz) = $this->__isVarDocable($prop);
-        if ($is) {
-            $this->{$name} = new $clazz;
-        }
+        if ($is) $this->{$name} = new $clazz;
 
         return $this->{$name};
     }
