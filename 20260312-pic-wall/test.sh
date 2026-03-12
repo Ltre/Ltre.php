@@ -1,1 +1,1 @@
-php -d upload_max_filesize=128M -d post_max_size=128M -d max_execution_time=300 -S localhost:12345
+php -d upload_max_filesize=128M -d post_max_size=128M -d max_execution_time=300 -d max_file_uploads=500 -S localhost:12345
